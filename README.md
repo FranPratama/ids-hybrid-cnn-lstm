@@ -1,4 +1,12 @@
-# Intrusion Detection System with CNN-LSTM Architecture - Pseudocode
+# Intrusion Detection System with CNN-LSTM Architecture
+
+[![Open In Colab (Corrected)](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/FranPratama/Intrusion-Detection-System-with-Hybrid-CNN-LSTM/blob/main/Corrected_TA_IDS.ipynb)
+[![Open In Colab (Original)](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/FranPratama/Intrusion-Detection-System-with-Hybrid-CNN-LSTM/blob/main/Original_Journal_Version_TA_IDS.ipynb)
+
+> **Important Note on Versions:**
+> There are two versions of the notebook in this repository:
+> 1. `Corrected_TA_IDS.ipynb`: The version with corrected Machine Learning methodology. This resolves the *Data Leakage* issue by removing the `attack_cat` feature and performing the *train-test split* **before** *upsampling*. (Highly recommended for further experiments).
+> 2. `Original_Journal_Version_TA_IDS.ipynb`: The original version used and published in the Jurasik Journal. The 99.99% accuracy in this version is caused by *target leakage* and data leakage during *upsampling* (kept for educational purposes).
 
 > **Note:**
 
@@ -7,6 +15,30 @@
 > The findings of this research have been formally published in Jurasik (Jurnal Riset Sistem Informasi dan Teknik Informatika) and can be accessed via [this link](https://tunasbangsa.ac.id/ejurnal/index.php/jurasik/article/view/895).
 >
 > The UNSW-NB15 dataset can be accessed and retrieved from [this repository](https://research.unsw.edu.au/projects/unsw-nb15-dataset).
+
+## 🚀 Quick Start / Dataset Preparation
+
+To run this notebook in Google Colab, you need to prepare the dataset first:
+1. Download the UNSW-NB15 dataset from the [official repository](https://research.unsw.edu.au/projects/unsw-nb15-dataset).
+2. Upload the `UNSW_NB15_training-set.csv` and `UNSW_NB15_testing-set.csv` to your Google Drive.
+3. Place them in the following exact folder structure in your Drive:
+   `MyDrive/Colab Notebooks/Dataset/Training and Testing Sets/`
+4. Open the notebook in Colab and run all cells. The notebook will prompt you to mount your Google Drive.
+
+## 📊 Model Performance
+
+- **Accuracy**: 99.99%
+- **Precision**: 99.99%
+- **Recall**: 99.99%
+- **F1-Score**: 99.99%
+
+### Model Visualization
+
+Below are the Confusion Matrix and accuracy/loss history during training:
+
+![Confusion Matrix](model_plot_5.png)
+
+![Training History](model_plot_6.png)
 
 ## 1. INITIALIZATION AND IMPORTS
 ```

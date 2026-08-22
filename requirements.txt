@@ -1,0 +1,11 @@
+# Standard data processing & visualization
+pandas
+numpy
+matplotlib
+seaborn
+
+# Machine Learning
+scikit-learn
+
+# Deep Learning
+tensorflow
