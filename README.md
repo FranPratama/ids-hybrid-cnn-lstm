@@ -1,289 +1,91 @@
-# Intrusion Detection System with CNN-LSTM Architecture
+# Intrusion Detection with a Hybrid CNN-LSTM
 
-[![Open In Colab (Corrected)](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/FranPratama/Intrusion-Detection-System-with-Hybrid-CNN-LSTM/blob/main/Corrected_TA_IDS.ipynb)
-[![Open In Colab (Original)](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/FranPratama/Intrusion-Detection-System-with-Hybrid-CNN-LSTM/blob/main/Original_Journal_Version_TA_IDS.ipynb)
+[![Open In Colab (Corrected)](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/FranPratama/ids-hybrid-cnn-lstm/blob/main/Corrected_TA_IDS.ipynb)
+[![Open In Colab (Original)](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/FranPratama/ids-hybrid-cnn-lstm/blob/main/Original_Journal_Version_TA_IDS.ipynb)
 
-> **Important Note on Versions:**
-> There are two versions of the notebook in this repository:
-> 1. `Corrected_TA_IDS.ipynb`: The version with corrected Machine Learning methodology. This resolves the *Data Leakage* issue by removing the `attack_cat` feature and performing the *train-test split* **before** *upsampling*. (Highly recommended for further experiments).
-> 2. `Original_Journal_Version_TA_IDS.ipynb`: The original version used and published in the Jurasik Journal. The 99.99% accuracy in this version is caused by *target leakage* and data leakage during *upsampling* (kept for educational purposes).
+Binary intrusion detection (normal vs. attack) on the [UNSW-NB15](https://research.unsw.edu.au/projects/unsw-nb15-dataset) dataset, comparing a 1D CNN, a stacked LSTM, and a hybrid CNN-LSTM. This started as my undergraduate thesis in Computer Science, and an earlier version was published in [Jurasik (Jurnal Riset Sistem Informasi dan Teknik Informatika)](https://tunasbangsa.ac.id/ejurnal/index.php/jurasik/article/view/895).
 
-> **Note:**
+## Which notebook to use
 
-> This project is submitted in partial fulfillment of the requirements for a Bachelor of Computer Science. The proposed architecture was implemented and evaluated using the UNSW-NB15 dataset, with all computational experiments conducted on Google Colab utilizing a T4 GPU acceleration environment.
-> 
-> The findings of this research have been formally published in Jurasik (Jurnal Riset Sistem Informasi dan Teknik Informatika) and can be accessed via [this link](https://tunasbangsa.ac.id/ejurnal/index.php/jurasik/article/view/895).
->
-> The UNSW-NB15 dataset can be accessed and retrieved from [this repository](https://research.unsw.edu.au/projects/unsw-nb15-dataset).
+Use `Corrected_TA_IDS.ipynb`.
 
-## 🚀 Quick Start / Dataset Preparation
+`Original_Journal_Version_TA_IDS.ipynb` is the version behind the journal paper, and its 99.99% accuracy is not real. The `attack_cat` column (which is "Normal" exactly when the label is 0) and the row `id` were left in as features, and the data was resampled before the train/test split, so copies of the same rows ended up in both sets. I've kept it in the repo as a record of that mistake.
 
-To run this notebook in Google Colab, you need to prepare the dataset first:
-1. Download the UNSW-NB15 dataset from the [official repository](https://research.unsw.edu.au/projects/unsw-nb15-dataset).
-2. Upload the `UNSW_NB15_training-set.csv` and `UNSW_NB15_testing-set.csv` to your Google Drive.
-3. Place them in the following exact folder structure in your Drive:
-   `MyDrive/Colab Notebooks/Dataset/Training and Testing Sets/`
-4. Open the notebook in Colab and run all cells. The notebook will prompt you to mount your Google Drive.
+Here's what the same three models score once the leak is gone (test accuracy):
 
-## 📊 Model Performance
+| Model    | Original (leaky) | Corrected |
+|----------|-----------------:|----------:|
+| CNN      | 0.9679           | 0.9052    |
+| LSTM     | 1.0000           | 0.9019    |
+| CNN-LSTM | 0.9999           | 0.9047    |
 
-- **Accuracy**: 99.99%
-- **Precision**: 99.99%
-- **Recall**: 99.99%
-- **F1-Score**: 99.99%
+The training curves make the leak obvious. The journal LSTM hits 100% validation accuracy in its very first epoch, which no honest model does on this data.
 
-### Model Visualization
+<table>
+  <tr>
+    <th>Journal version (leaky)</th>
+    <th>Corrected</th>
+  </tr>
+  <tr>
+    <td><img src="images/original_lstm_training.png" alt="LSTM training curves, journal version" width="100%"></td>
+    <td><img src="images/lstm_training.png" alt="LSTM training curves, corrected version" width="100%"></td>
+  </tr>
+</table>
 
-Below are the Confusion Matrix and accuracy/loss history during training:
+What the corrected notebook does differently:
 
-![Confusion Matrix](model_plot_5.png)
+- Drops `id` and `attack_cat`, then removes duplicate rows. About 37% of the combined dataset turned out to be duplicates once `id` was gone (257,673 → 162,745 rows).
+- Splits into train, validation, and test sets (stratified) before any balancing.
+- Balances only the training set, by upsampling whichever class is smaller, then shuffles it.
+- Validates on its own held-out split instead of `validation_split`, so no upsampled copies leak into validation.
 
-![Training History](model_plot_6.png)
+## Results
 
-## 1. INITIALIZATION AND IMPORTS
-```
-BEGIN Program
-    IMPORT required libraries:
-        - pandas, numpy, seaborn, matplotlib for data processing
-        - sklearn for preprocessing and metrics
-        - tensorflow/keras for deep learning
-        - glob for file operations
-    
-    CONNECT Google Drive
-END
-```
+From the corrected notebook: a single run, evaluated on a test set of 32,549 rows that keeps the original class ratio.
 
-## 2. DATA LOADING AND PREPROCESSING
-```
-BEGIN DataPreprocessing
-    SET path = dataset directory path
-    
-    // Load multiple CSV files
-    GET all CSV files from path recursively
-    FOR each file in files:
-        READ CSV file into dataframe
-    END FOR
-    
-    // Combine and clean data
-    CONCATENATE all dataframes
-    REMOVE duplicate rows
-    RESET index
-    
-    DISPLAY dataset shape and info
-    
-    // Handle categorical data
-    SELECT columns with object data type
-    FOR each categorical column (proto, service, state, attack_cat):
-        CONVERT to category type
-        CREATE numeric codes
-        REPLACE original column with numeric codes
-    END FOR
-    
-    DROP first column (unnecessary)
-    
-    // Analyze target distribution
-    GROUP BY label and COUNT occurrences
-    DISPLAY label distribution
-END
-```
+| Model    | Accuracy | Weighted F1 | Benign recall | Attack recall |
+|----------|---------:|------------:|--------------:|--------------:|
+| CNN      | 0.9052   | 0.9051      | 0.93          | 0.88          |
+| LSTM     | 0.9019   | 0.9019      | 0.92          | 0.89          |
+| CNN-LSTM | 0.9047   | 0.9046      | 0.93          | 0.88          |
 
-## 3. DATA PREPARATION
-```
-BEGIN DataPreparation
-    // Separate features and target
-    SET X = all columns except 'label'
-    SET y = 'label' column
-    
-    // Encode labels
-    INITIALIZE LabelEncoder
-    TRANSFORM y using label encoder
-    
-    // Handle class imbalance using upsampling
-    SEPARATE majority class (label = 0)
-    SEPARATE minority class (label = 1)
-    UPSAMPLE minority class to match majority class size
-    COMBINE majority and upsampled minority classes
-    
-    // Re-separate features and target from balanced data
-    SET X = features from balanced data
-    SET y = labels from balanced data
-    
-    // Split data
-    SPLIT data into training (80%) and testing (20%) sets
-    
-    // Normalize features
-    INITIALIZE StandardScaler
-    FIT scaler on training data
-    TRANSFORM both training and testing data
-    
-    // Prepare for neural network
-    CALCULATE number of classes
-    CONVERT labels to categorical (one-hot encoding)
-    RESHAPE data for CNN input (add dimension)
-END
-```
+The three models end up within half a point of each other, so this run doesn't show the hybrid beating a plain CNN. All of them miss around 12% of attacks, and that's the number I'd work on first.
 
-## 4. MODEL ARCHITECTURE DEFINITION
-```
-BEGIN ModelDefinition
-    FUNCTION build_enhanced_model(input_shape, num_classes):
-        INITIALIZE Sequential model
-        
-        // CNN Block 1
-        ADD Conv1D layer (128 filters, kernel=3, ReLU, L2 regularization)
-        ADD BatchNormalization
-        ADD MaxPooling1D (pool_size=2)
-        ADD Dropout (0.4)
-        
-        // CNN Block 2
-        ADD Conv1D layer (128 filters, kernel=2, ReLU, L2 regularization)
-        ADD BatchNormalization
-        ADD MaxPooling1D (pool_size=2)
-        ADD Dropout (0.4)
-        
-        // CNN Block 3
-        ADD Conv1D layer (64 filters, kernel=1, ReLU, L2 regularization)
-        ADD BatchNormalization
-        ADD MaxPooling1D (pool_size=2)
-        
-        // LSTM Blocks
-        ADD LSTM layer (128 units, return_sequences=True, L2 regularization)
-        ADD Dropout (0.5)
-        ADD LSTM layer (64 units)
-        ADD Dropout (0.5)
-        
-        // Fully Connected Layers
-        ADD Dense layer (128 units, ReLU, L2 regularization)
-        ADD BatchNormalization
-        ADD Dropout (0.5)
-        
-        ADD Dense layer (64 units, ReLU, L2 regularization)
-        ADD BatchNormalization
-        
-        // Output Layer
-        ADD Dense layer (num_classes units, softmax activation)
-        
-        RETURN model
-    END FUNCTION
-END
-```
+CNN-LSTM confusion matrix (0 = benign, 1 = attack) and training curves:
 
-## 5. MODEL COMPILATION AND CALLBACKS
-```
-BEGIN ModelSetup
-    // Build model
-    SET input_shape = (number_of_features, 1)
-    CREATE model using build_enhanced_model function
-    
-    // Compile model
-    SET optimizer = Adam with learning_rate=0.0005
-    COMPILE model with:
-        - optimizer
-        - loss = categorical_crossentropy
-        - metrics = accuracy, precision, recall
-    
-    // Setup callbacks
-    INITIALIZE EarlyStopping:
-        - monitor = val_accuracy
-        - patience = 15
-        - restore_best_weights = True
-    
-    INITIALIZE ReduceLROnPlateau:
-        - monitor = val_loss
-        - factor = 0.5
-        - patience = 5
-        - min_lr = 1e-6
-    
-    INITIALIZE ModelCheckpoint:
-        - save_best_only = True
-        - monitor = val_accuracy
-END
-```
+![CNN-LSTM confusion matrix](images/cnn_lstm_confusion_matrix.png)
 
-## 6. MODEL TRAINING
-```
-BEGIN Training
-    TRAIN model with:
-        - training data (X_train, y_train)
-        - epochs = 30
-        - batch_size = 64
-        - validation_split = 0.2
-        - callbacks = [early_stopping, reduce_lr, checkpoint]
-        - verbose = 1
-    
-    STORE training history
-END
-```
+![CNN-LSTM training history](images/cnn_lstm_training.png)
 
-## 7. MODEL EVALUATION
-```
-BEGIN Evaluation
-    // Load best model weights
-    LOAD best saved model weights
-    
-    // Make predictions
-    PREDICT on test data
-    APPLY threshold (> 0.5) to get binary predictions
-    
-    // Convert predictions and true labels from categorical to class labels
-    GET predicted class labels using argmax
-    GET true class labels using argmax
-    
-    // Calculate evaluation metrics
-    CALCULATE accuracy using predicted and true labels
-    CALCULATE precision using weighted average
-    CALCULATE recall using weighted average
-    CALCULATE F1-score using weighted average
-    
-    // Display metrics
-    PRINT "Evaluation Metrics:"
-    PRINT accuracy, precision, recall, f1_score
-    
-    // Generate confusion matrix
-    CREATE confusion matrix from true and predicted labels
-    PLOT confusion matrix as heatmap
-    
-    // Generate classification report
-    PRINT detailed classification report
-END
-```
+<details>
+<summary>CNN and LSTM plots</summary>
 
-## 8. VISUALIZATION
-```
-BEGIN Visualization
-    // Get training history information
-    GET number of epochs from history
-    
-    // Create subplots for accuracy and loss
-    CREATE figure with 2 subplots
-    
-    // Plot training vs validation accuracy
-    PLOT training accuracy over epochs
-    PLOT validation accuracy over epochs
-    ADD title, labels, and legend
-    ADD grid
-    
-    // Plot training vs validation loss
-    PLOT training loss over epochs
-    PLOT validation loss over epochs
-    ADD title, labels, and legend
-    ADD grid
-    
-    DISPLAY plots
-END
-```
+![CNN confusion matrix](images/cnn_confusion_matrix.png)
 
-## 9. PROGRAM STRUCTURE OVERVIEW
-```
-BEGIN Main Program Flow
-    1. EXECUTE DataPreprocessing
-    2. EXECUTE DataPreparation
-    3. EXECUTE ModelDefinition
-    4. EXECUTE ModelSetup
-    5. EXECUTE Training
-    6. EXECUTE Evaluation
-    7. EXECUTE Visualization
-    
-    PRINT "Program completed successfully"
-END Program
-```
+![CNN training history](images/cnn_training.png)
+
+![LSTM confusion matrix](images/lstm_confusion_matrix.png)
+
+![LSTM training history](images/lstm_training.png)
+
+</details>
+
+## Running it
+
+1. Download `UNSW_NB15_training-set.csv` and `UNSW_NB15_testing-set.csv` from the [UNSW-NB15 page](https://research.unsw.edu.au/projects/unsw-nb15-dataset).
+2. Put both files in your Google Drive under `MyDrive/Colab Notebooks/Dataset/Training and Testing Sets/`.
+3. Open the notebook in Colab, switch the runtime to a T4 GPU, and run all cells. It will ask to mount your Drive.
+
+Training all three models takes roughly half an hour on a T4.
+
+## How it works
+
+The two CSV files are concatenated and deduplicated. `proto`, `service`, and `state` are label-encoded, and every feature is standardized with a scaler fitted on the training set only. Each flow becomes a sequence of 42 values with one channel, which is what the Conv1D and LSTM layers take as input.
+
+The three models:
+
+- **CNN**: three Conv1D blocks (64 filters, LeakyReLU, max pooling, dropout 0.3), followed by dense layers of 64 and 32 units.
+- **LSTM**: two LSTM layers (128 and 64 units, dropout 0.5), then dense layers of 128 and 64 units with batch normalization.
+- **CNN-LSTM**: three Conv1D blocks (128, 128, and 64 filters with kernel sizes 3, 2, and 1, plus batch normalization and L2), feeding into the same LSTM and dense stack as the LSTM model.
+
+All three train with Adam (learning rate 5e-4), categorical cross-entropy, and batch size 64, for up to 30 epochs. Early stopping watches validation accuracy with patience 15, ReduceLROnPlateau halves the learning rate when validation loss stalls for 5 epochs, and the checkpoint with the best validation accuracy is used for evaluation.
